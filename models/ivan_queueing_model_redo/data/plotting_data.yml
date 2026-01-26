@@ -1,0 +1,35 @@
+all:
+  name: All
+  plots:
+    queue_size_uncontrolled:
+      checkbox_name: Queue Size Uncontrolled
+      linestyle: dashed
+      labels: [Sector 1 Queue Size (Uncontrolled), Sector 2 Queue Size (Uncontrolled),
+        Sector 3 Queue Size (Uncontrolled), Sector 4 Queue Size (Uncontrolled)]
+      colors: [red, green, blue, purple]
+      traj_key: order_hst_unc
+      toggled: true
+    queue_size_controlled:
+      checkbox_name: Queue Size Controlled
+      linestyle: solid
+      labels: [Sector 1 Queue Size (Controlled), Sector 2 Queue Size (Controlled),
+        Sector 3 Queue Size (Controlled), Sector 4 Queue Size (Controlled)]
+      colors: [red, green, blue, purple]
+      traj_key: order_hst_cont
+      toggled: true
+    inventories_uncontrolled:
+      checkbox_name: Inventories Uncontrolled
+      linestyle: dashed
+      labels: [Sector 1 Inventory (Uncontrolled), Sector 2 Inventory (Uncontrolled),
+        Sector 3 Inventory (Uncontrolled), Sector 4 Inventory (Uncontrolled)]
+      colors: [red, green, blue, purple]
+      traj_key: inv_hst_unc
+      toggled: false
+    inventories_controlled:
+      checkbox_name: Inventories Controlled
+      linestyle: solid
+      labels: [Sector 1 Inventory (Controlled), Sector 2 Inventory (Controlled), Sector
+          3 Inventory (Controlled), Sector 4 Inventory (Controlled)]
+      colors: [red, green, blue, purple]
+      traj_key: inv_hst_cont
+      toggled: false
