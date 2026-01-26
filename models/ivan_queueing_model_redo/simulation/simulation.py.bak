@@ -1,0 +1,91 @@
+from .parameters import Params
+from typing import Tuple
+import numpy as np
+from scipy.linalg import eig, inv
+from .model import Economy
+
+MODEL_READY = True # Set this to True when you think it's ready.
+HEAVY_COMPUTE = False # Set true if some sims are compute-heavy (app will attempt to boost performance in various ways).
+
+def get_trajectories(params: Params) -> Tuple[dict, np.ndarray, Exception]:
+    e = None
+    traj = {}
+    t = np.array([])
+    # try:
+    alpha, random_everything, dt, A, T, interval_alpha, interval_mu  = params.alpha, params.random_everything, params.dt, params.A, params.T, params.interval_alpha, params.interval_mu 
+
+    if random_everything:
+        A = np.random.rand(4,4)
+        alpha = 1.0E0*np.random.rand(4,)
+        interval_alpha = 1e-1*np.random.rand(4,)
+        interval_mu = 1e-1*np.random.rand(4,)
+
+    batch_alpha = alpha*(interval_alpha.reshape((4,)))
+    # Eigendecomposition matching original.py
+    levals, levecs = eig(A)     # eigenvectors are columns
+    revals, revecs = eig(A.T)   # keep if you want, but see note below
+
+    # Select eigenvalue with largest magnitude (spectral radius)
+    idx = int(np.argmax(np.abs(levals)))
+    r = levals[idx]
+
+    # Extract eigenvectors as COLUMNS (not rows), and match friend's abs(...)
+    m_evec_l = np.abs(levecs[:, idx])
+    m_evec_r = np.abs(revecs[:, idx])
+
+    # Normalize exactly like original: crt = crt / <crt, nb>, nb = nb / <crt, nb>
+    den = np.inner(m_evec_l, m_evec_r)
+    m_evec_l = m_evec_l / den
+    m_evec_r = m_evec_r / den
+
+    rt = np.random.rand(1) 
+    A = A*rt/r 
+
+    alpha = alpha.reshape(-1)
+    lamb = inv(np.eye(4) - A)@alpha
+    rho_inv = np.ones(4) + np.random.random(4)
+    mu = lamb*rho_inv
+    
+    batch_mu = mu*(interval_mu.reshape((4,)))
+
+    S = np.vstack((np.eye(4) - A, -np.eye(4), -A))
+    con = np.concatenate([alpha,-mu])
+    
+    r_nvt = 1e2*np.ones(4) + (9e2*np.random.random(4))
+    nvt = np.ones(4) * (r_nvt.reshape((4,)))
+
+    traj = {
+        "order_hst_unc": np.array([np.array([0,0,0,0])]),
+        "inv_hst_unc": np.array([np.array([0,0,0,0])]),
+        "mean_orders_unc": np.array([0]),
+        "order_hst_cont": np.array([np.array([0,0,0,0])]),
+        "inv_hst_cont": np.array([np.array([0,0,0,0])]),
+        "mean_orders_cont": np.array([0])
+    }
+
+    leijn = Economy(batch_alpha, interval_alpha, batch_mu, interval_mu, A, nvt, 0, dt, m_evec_l, con, S, alpha, A)
+    leijn_cont = Economy(batch_alpha, interval_alpha, batch_mu, interval_mu, A, nvt, 1, dt, m_evec_l, con, S, alpha, A)
+
+    for i in range(T):
+        orders_unc = np.array([agent.orders for agent in leijn.agents])
+        traj["mean_orders_unc"] = np.append(traj["mean_orders_unc"], np.sum(orders_unc) / 4)
+        inventory_unc = np.array([agent.inventory for agent in leijn.agents])
+        traj["order_hst_unc"] = np.append(traj["order_hst_unc"], [orders_unc], axis= 0)
+        traj["inv_hst_unc"] = np.append(traj["inv_hst_unc"], [inventory_unc], axis= 0)
+
+        orders_cont = np.array([agent.orders for agent in leijn_cont.agents])
+        traj["mean_orders_cont"] = np.append(traj["mean_orders_cont"], np.sum(orders_cont) / 4)
+        inventory_cont = np.array([agent.inventory for agent in leijn_cont.agents])
+        traj["order_hst_cont"] = np.append(traj["order_hst_cont"], [orders_cont], axis= 0)
+        traj["inv_hst_cont"] = np.append(traj["inv_hst_cont"], [inventory_cont], axis= 0)
+
+        leijn.step()
+        leijn_cont.step()
+
+    t = np.linspace(0,T+1,T+1)
+
+    # except Exception as e:
+    #     return traj, t, e
+
+    return traj, t, e
+
